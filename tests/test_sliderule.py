@@ -135,7 +135,7 @@ class TestSupport:
     def test_allowlisted(self, short_name):
         plugin = SlideRulePlugin(fake_context())
         results = GranuleResultSet([make_granule(short_name=short_name)])
-        capabilities = plugin.supports(results)
+        capabilities = plugin.capabilities(results)
         assert capabilities.ok is True
         assert capabilities.operations == {
             Capability.PROCESS,
@@ -156,14 +156,14 @@ class TestSupport:
         results = GranuleResultSet(
             [make_granule(short_name="GEDI_L4A_AGB_Density_V2_1_2056")]
         )
-        assert plugin.supports(results).ok is True
+        assert plugin.capabilities(results).ok is True
 
     def test_rejects_landsat(self):
         plugin = SlideRulePlugin(fake_context())
         results = GranuleResultSet(
             [make_granule(collection_id="C-LANDSAT", short_name="LANDSAT_8_C1")]
         )
-        support = plugin.supports(results)
+        support = plugin.capabilities(results)
         assert support.ok is False
         assert "LANDSAT_8_C1" in support.reason
 

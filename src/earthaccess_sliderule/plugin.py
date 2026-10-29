@@ -16,6 +16,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from earthaccess_plugin_spec import Capabilities, Capability, PluginBase
+from earthaccess_plugin_spec.granules import (
+    collection_label,
+    native_id,
+    related_urls,
+)
 
 __all__ = ["SlideRulePlugin"]
 
@@ -139,16 +144,8 @@ class SlideRulePlugin(PluginBase):
                 apis=_SLIDERULE_APIS,
                 formats=_SLIDERULE_FORMATS,
             )
-        label = short_name or _peek_collection_id(results) or "these results"
+        label = collection_label(results) or "these results"
         return Capabilities(False, reason=f"{label} is not a SlideRule dataset")
-
-
-def _peek_collection_id(results: Any) -> str:
-    try:
-        first = next(iter(results), None)
-    except TypeError:
-        return ""
-    return first.get("meta", {}).get("collection-concept-id", "") if first else ""
 
 
 def _resource_names(results: Any) -> list[str]:
@@ -163,11 +160,10 @@ def _resource_names(results: Any) -> list[str]:
     names: list[str] = []
     fallbacks: list[str] = []
     for granule in results:
-        umm = granule.get("umm", {})
-        ur = umm.get("GranuleUR")
+        ur = native_id(granule)
         if ur and ur not in fallbacks:
             fallbacks.append(ur)
-        for related in umm.get("RelatedUrls", []):
+        for related in related_urls(granule):
             url = (related.get("URL") or "").split("?")[0].rstrip("/")
             base = url.rsplit("/", 1)[-1]
             if (
