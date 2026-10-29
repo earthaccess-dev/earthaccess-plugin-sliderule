@@ -12,6 +12,7 @@ import os
 import re
 import tempfile
 import threading
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -73,6 +74,8 @@ _SLIDERULE_OPERATIONS = frozenset(
     }
 )
 _SLIDERULE_FORMATS = frozenset({"geoparquet"})
+# SlideRule expresses time bounds in its processor parameters.
+_TEMPORAL_PARMS = ("t0", "t1")
 
 
 class SlideRulePlugin(PluginBase):
@@ -88,6 +91,9 @@ class SlideRulePlugin(PluginBase):
         parms: dict = field(default_factory=dict)
         aoi: Any = None  # GeoJSON dict, file path, or GeoDataFrame
         resources: list[str] | None = None  # overrides results.native_ids
+        # Canonical capability options; translated to aoi/parms below.
+        bbox: tuple[float, float, float, float] | None = None  # west, south, east, north
+        temporal: Mapping[str, Any] | Sequence[Any] | None = None
 
     def __init__(self, ctx: Any) -> None:
         super().__init__(ctx)
@@ -106,25 +112,39 @@ class SlideRulePlugin(PluginBase):
         if resources is None and results is not None:
             resources = _resource_names(results)
 
+        aoi = options.aoi
+        if options.bbox is not None:
+            if aoi is not None:
+                raise TypeError("pass either bbox or aoi, not both")
+            aoi = _bbox_polygon(options.bbox)
+
         # SlideRule's ICESat-2 processing endpoints need an asset to locate the
         # data (``sliderule.icesat2`` defaults it to this); ``sliderule.run``
         # does not set one, and without it the server accepts the request but
         # produces no output.
         parms = dict(options.parms)
+        if options.temporal is not None:
+            start, stop = _temporal_bounds(options.temporal)
+            clash = sorted(set(_TEMPORAL_PARMS) & set(parms))
+            if clash:
+                raise TypeError(
+                    f"pass either temporal or parms[{clash}], not both"
+                )
+            parms[_TEMPORAL_PARMS[0]], parms[_TEMPORAL_PARMS[1]] = start, stop
         if "asset" not in parms and options.api.lower().startswith("atl"):
             parms["asset"] = "icesat2"
 
         def call() -> Any:
             import sliderule
 
-            aoi, cleanup = _as_region_file(options.aoi)
+            region, cleanup = _as_region_file(aoi)
             try:
                 with self._lock:
                     if not self._ready:
                         sliderule.init(**self._init_kwargs)
                         self._ready = True
                     return sliderule.run(
-                        options.api, parms, aoi=aoi, resources=resources
+                        options.api, parms, aoi=region, resources=resources
                     )
             finally:
                 if cleanup and os.path.exists(cleanup):
@@ -146,6 +166,36 @@ class SlideRulePlugin(PluginBase):
             )
         label = collection_label(results) or "these results"
         return Capabilities(False, reason=f"{label} is not a SlideRule dataset")
+
+
+def _bbox_polygon(
+    bbox: Sequence[float],
+) -> dict[str, Any]:
+    """A closed GeoJSON polygon for a (west, south, east, north) bbox."""
+
+    west, south, east, north = bbox
+    ring = [
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south],
+    ]
+    return {"type": "Polygon", "coordinates": [ring]}
+
+
+def _temporal_bounds(temporal: Mapping[str, Any] | Sequence[Any]) -> tuple[str, str]:
+    """Normalise ``temporal`` to the two ISO-8601 bounds SlideRule expects."""
+
+    if isinstance(temporal, Mapping):
+        start, stop = temporal["start"], temporal["stop"]
+    else:
+        start, stop = temporal
+    return _isoformat(start), _isoformat(stop)
+
+
+def _isoformat(value: Any) -> str:
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
 def _resource_names(results: Any) -> list[str]:

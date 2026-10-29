@@ -204,3 +204,59 @@ class TestResourceNames:
         assert _resource_names(GranuleResultSet([granule])) == [
             "ATL03_20230602091058_11151903_007_01.h5"
         ]
+
+
+class TestCanonicalOptions:
+    def test_bbox_becomes_a_polygon_region(self):
+        backend = FakeSlideRule()
+        fixtures = SlideRuleFixtures(backend=backend)
+        plugin = SlideRulePlugin(fake_context())
+        with fixtures.backend():
+            plugin.request(
+                fixtures.result_set,
+                api="atl06p",
+                bbox=(-105.0, 39.0, -104.0, 40.0),
+            ).results()
+        geometry = backend.runs[0]["aoi_geojson"]
+        assert geometry["type"] == "Feature"
+        assert geometry["geometry"]["type"] == "Polygon"
+
+    def test_temporal_accepts_datetimes_and_sets_parms(self):
+        import datetime as dt
+
+        backend = FakeSlideRule()
+        fixtures = SlideRuleFixtures(backend=backend)
+        plugin = SlideRulePlugin(fake_context())
+        start = dt.datetime(2020, 1, 1)
+        stop = dt.datetime(2020, 1, 2)
+        with fixtures.backend():
+            plugin.request(
+                fixtures.result_set,
+                api="atl06p",
+                temporal=(start, stop),
+            ).results()
+        parms = backend.runs[0]["parms"]
+        assert parms["t0"] == start.isoformat()
+        assert parms["t1"] == stop.isoformat()
+
+    def test_bbox_and_aoi_are_mutually_exclusive(self):
+        fixtures = SlideRuleFixtures()
+        plugin = SlideRulePlugin(fake_context())
+        with pytest.raises(TypeError, match="bbox or aoi"):
+            plugin.request(
+                fixtures.result_set,
+                api="atl06p",
+                bbox=(-105.0, 39.0, -104.0, 40.0),
+                aoi={"type": "Point", "coordinates": [0, 0]},
+            )
+
+    def test_temporal_and_parms_bounds_are_mutually_exclusive(self):
+        fixtures = SlideRuleFixtures()
+        plugin = SlideRulePlugin(fake_context())
+        with pytest.raises(TypeError, match="temporal or parms"):
+            plugin.request(
+                fixtures.result_set,
+                api="atl06p",
+                temporal={"start": "2020-01-01", "stop": "2020-01-02"},
+                parms={"t0": "2019-01-01", "t1": "2019-01-02"},
+            )
