@@ -1,5 +1,11 @@
 # earthaccess-sliderule
 
+> **Plugin preview.** This package is part of the v2.0.0 plugin preview and only
+> works with the `plugins` branch of earthaccess
+> ([`earthaccess-dev/earthaccess@plugins`](https://github.com/earthaccess-dev/earthaccess/tree/plugins)).
+> It is **not on PyPI yet** — see
+> [Installing and testing the drafts](https://github.com/earthaccess-dev/earthaccess-plugin-spec/blob/main/docs/install.md).
+
 On-demand processing of ICESat-2 and GEDI data with
 [SlideRule](https://slideruleearth.io/), through earthaccess.
 
@@ -18,8 +24,19 @@ downloading raw granules would be wasteful.
 
 ## Install
 
+This package is **not on PyPI yet**. It is part of the v2.0.0 plugin preview and
+must be installed together with the `plugins` branch of earthaccess. The full
+steps (credentials, notebook deps, sanity check) are in
+[Installing and testing the drafts](https://github.com/earthaccess-dev/earthaccess-plugin-spec/blob/main/docs/install.md).
+
 ```bash
-pip install earthaccess-sliderule
+git clone git@github.com:earthaccess-dev/earthaccess.git
+cd earthaccess
+git checkout plugins
+
+uv venv
+uv pip install -e ".[all]"
+uv pip install "git+https://github.com/earthaccess-dev/earthaccess-plugin-sliderule.git"
 ```
 
 ## Use with earthaccess
