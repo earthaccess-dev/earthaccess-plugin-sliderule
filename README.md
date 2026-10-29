@@ -93,11 +93,14 @@ rejects anything else early and lists the processors it can run:
 
 ```python
 ea.plugins.sliderule.capabilities("ATL06")
-# Capabilities('sliderule supported ATL06', operations=3)
-#   operations: process, subset_bbox, subset_temporal
+# sliderule supported ATL06
+#   process          run an on-demand processor selected by api
+#   subset_bbox      restrict the result to a spatial extent (bbox or wkt)
+#   subset_temporal  restrict the result to a time interval (temporal)
+#   formats: geoparquet
 #   apis: atl03sp, atl03vp, atl03x, atl06p, atl06sp, atl08p, atl13sp, atl24v,
 #         gedil1b, gedil2a, gedil4a
-#   formats: geoparquet
+#   hint: use .explain() for options and examples
 
 ea.plugins.sliderule.request(landsat_results, api="atl06p").results()
 # UnsupportedCollectionError: sliderule does not support LANDSAT_8_C1 (...):
