@@ -74,6 +74,12 @@ _SLIDERULE_OPERATIONS = frozenset(
     }
 )
 _SLIDERULE_FORMATS = frozenset({"geoparquet"})
+_EXAMPLES = {
+    Capability.PROCESS: (
+        'ea.plugins.sliderule.request(results, api="atl06p").results()  '
+        "# GeoDataFrame"
+    ),
+}
 # SlideRule expresses time bounds in its processor parameters.
 _TEMPORAL_PARMS = ("t0", "t1")
 
@@ -163,6 +169,7 @@ class SlideRulePlugin(PluginBase):
                 operations=_SLIDERULE_OPERATIONS,
                 apis=_SLIDERULE_APIS,
                 formats=_SLIDERULE_FORMATS,
+                examples=_EXAMPLES,
             )
         label = collection_label(results) or "these results"
         return Capabilities(False, reason=f"{label} is not a SlideRule dataset")
